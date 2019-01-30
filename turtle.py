@@ -10,7 +10,7 @@ import os
 import sys
 
 import backtrader as bt
-from models import HighContainer, LowContainer
+from models import LineMemory
 
 
 class Strategy(bt.Strategy):
@@ -39,12 +39,12 @@ class Strategy(bt.Strategy):
     def __init__(self):
         self.highs = []
         self.lows = []
-        self.highs.append(HighContainer(20))
-        self.highs.append(HighContainer(55))
-        self.highs.append(HighContainer(10))
-        self.lows.append(LowContainer(10))
-        self.lows.append(LowContainer(20))
-        self.lows.append(LowContainer(55))
+        self.highs.append(LineMemory(20))
+        self.highs.append(LineMemory(55))
+        self.highs.append(LineMemory(10))
+        self.lows.append(LineMemory(10))
+        self.lows.append(LineMemory(20))
+        self.lows.append(LineMemory(55))
 
         self.dataclose = self.datas[0].close
         self.order = None

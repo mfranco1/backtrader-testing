@@ -1,9 +1,15 @@
 .env
 *.csv*
 *.txt*
-__pycache__/
 application.py
 config.py
 env/
 images/
 urls.py
+venv
+data
+__pycache__
+*.DS_Store
+*.pyc
+*.xlsx
+.ipynb_checkpoints

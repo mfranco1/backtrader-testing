@@ -14,12 +14,13 @@ import matplotlib.pyplot as plt
 import backtrader as bt
 
 from models import DataMemory, LineMemory
+from report import Cerebro
 
 class RSIStrategy(bt.Strategy):
     images_dir = '/home/mfranco/Desktop/trading/backtrader-testing/images/test'
 
     params = (
-        ('memory_size', 10),
+        ('memory_size', 5),
     )
 
     def log(self, txt, dt=None, debug=False):
@@ -190,8 +191,9 @@ class RSIStrategy(bt.Strategy):
 
 if __name__ == '__main__':
     cerebro = bt.Cerebro()
-    cerebro.optstrategy(RSIStrategy, memory_size=range(5,51))
-    #cerebro.addstrategy(RSIStrategy)
+    #cerebro = Cerebro()
+    #cerebro.optstrategy(RSIStrategy, memory_size=range(5,51))
+    cerebro.addstrategy(RSIStrategy)
 
     modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
     datapath = os.path.join(modpath, 'YHF-BTC-USD.csv')
@@ -207,7 +209,8 @@ if __name__ == '__main__':
     cerebro.broker.setcommission(commission=0.0)
     starting_cash = cerebro.broker.getvalue()
     print("Starting Portfolio Value: {}".format(starting_cash))
-    results = cerebro.run(optreturn=False)
+    #results = cerebro.run(optreturn=False)
+    cerebro.run()
     headers = ["PERIODS"]
     profits = ["GROSS PROFITS"]
     losses = ["GROSS LOSSES"]
@@ -216,28 +219,35 @@ if __name__ == '__main__':
     profit_factor = ["PROFIT FACTOR"]
     max_drawdown = ["MAX DRAWDOWN"]
     max_profit = ["MAX PROFIT"]
-    for strat in results:
-        strat = strat[0]
-        headers.append("PERIOD {}".format(strat.params.memory_size))
-        profits.append(strat.gross_profits)
-        losses.append(strat.gross_losses)
-        trades.append(strat.total_trades)
-        percent_profitable.append(strat.percent_profitable)
-        profit_factor.append(strat.profit_factor)
-        max_drawdown.append(strat.max_drawdown)
-        max_profit.append(strat.max_profit)
-    with open('./results_rsi_divergence.csv', 'w') as csvfile:
-        writer = csv.writer(csvfile, delimiter=",")
-        writer.writerow(headers)
-        writer.writerow(profits)
-        writer.writerow(losses)
-        writer.writerow(trades)
-        writer.writerow(percent_profitable)
-        writer.writerow(profit_factor)
-        writer.writerow(max_drawdown)
-        writer.writerow(max_profit)
+    #for strat in results:
+    #    strat = strat[0]
+    #    headers.append("PERIOD {}".format(strat.params.memory_size))
+    #    profits.append(strat.gross_profits)
+    #    losses.append(strat.gross_losses)
+    #    trades.append(strat.total_trades)
+    #    percent_profitable.append(strat.percent_profitable)
+    #    profit_factor.append(strat.profit_factor)
+    #    max_drawdown.append(strat.max_drawdown)
+    #    max_profit.append(strat.max_profit)
+    #with open('./results_rsi_divergence.csv', 'w') as csvfile:
+    #    writer = csv.writer(csvfile, delimiter=",")
+    #    writer.writerow(headers)
+    #    writer.writerow(profits)
+    #    writer.writerow(losses)
+    #    writer.writerow(trades)
+    #    writer.writerow(percent_profitable)
+    #    writer.writerow(profit_factor)
+    #    writer.writerow(max_drawdown)
+    #    writer.writerow(max_profit)
     final_cash = cerebro.broker.getvalue()
     net_profit = final_cash - starting_cash
     print("Final Portfolio Value: {}".format(final_cash))
     print("Net Profit: {}".format(net_profit))
-    #cerebro.plot()
+    cerebro.plot()
+    #cerebro.plot('./rsi_5_day_divergence_plot.png')
+    #cerebro.report(
+        #'./',
+        #infile='YHF-BTC-USD.csv',
+        #user='TradingMachine',
+        #memo='5 Day RSI Divergence'
+    #)
