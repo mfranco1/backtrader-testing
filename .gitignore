@@ -1,0 +1,9 @@
+.env
+*.csv*
+*.txt*
+__pycache__/
+application.py
+config.py
+env/
+images/
+urls.py

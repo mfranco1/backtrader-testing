@@ -5,6 +5,7 @@ from __future__ import (
     unicode_literals
 )
 
+import csv
 import datetime
 import os.path
 import sys
@@ -16,6 +17,11 @@ from models import DataMemory, LineMemory
 
 class RSIStrategy(bt.Strategy):
     images_dir = '/home/mfranco/Desktop/trading/backtrader-testing/images/test'
+
+    params = (
+        ('memory_size', 10),
+    )
+
     def log(self, txt, dt=None, debug=False):
         if debug:
             dt = dt or self.datas[0].datetime.date(0)
@@ -30,11 +36,13 @@ class RSIStrategy(bt.Strategy):
         self.wins = 0
         self.gross_profits = 0
         self.gross_losses = 0
+        self.max_profit = 0
+        self.max_drawdown = 0
         self.total_trades = 0
         self.percent_profitable = 0
         self.profit_factor = 0
 
-        self.memory_size = 50
+        self.memory_size = self.params.memory_size
         self.data_memory = DataMemory(self.memory_size)
         self.rsi_memory = LineMemory(self.memory_size)
 
@@ -83,8 +91,12 @@ class RSIStrategy(bt.Strategy):
         if trade.pnl > 0:
             self.wins += 1
             self.gross_profits += trade.pnl
+            if trade.pnl > self.max_profit:
+                self.max_profit = trade.pnl
         else:
             self.gross_losses -= trade.pnl
+            if trade.pnl < self.max_drawdown:
+                self.max_drawdown = trade.pnl
 
         if self.total_trades:
             self.percent_profitable = self.wins / self.total_trades
@@ -116,80 +128,78 @@ class RSIStrategy(bt.Strategy):
         )
         self.rsi_memory.push(self.rsi[0])
 
-        if (
-            self.data_memory.current_size >= self.memory_size
-            #and self.rsi_memory.memory[0] > 70
-        ):
-            #rsi_x, rsi_y, rsi_ynew, rsi_yder = self.rsi_memory.get_interpolation()
-            #rsi_slope, rsi_intercept = self.rsi_memory.get_linear_trend(rsi_ynew)
-            plt.figure()
-            rsi_slope = self.get_line_slope(self.rsi_memory, 'RSI')
-            #plt.plot(rsi_x, rsi_ynew, label='RSI Spline')
-            #plt.plot(rsi_x, rsi_yder, label='RSI Derivative')
-            #rsi_y_vals = rsi_intercept + rsi_slope * rsi_x
-            #plt.plot(rsi_x, rsi_y_vals, label='RSI Tendency')
-
-            price_slope = self.get_line_slope(self.data_memory.closes, 'Price')
-            #price_x, price_y, price_ynew, price_yder = self.data_memory.closes.get_interpolation()
-            #price_slope, price_intercept = self.data_memory.closes.get_linear_trend(price_ynew)
-            #plt.plot(price_x, price_ynew, label='Price Spline')
-            #plt.plot(price_x, price_yder, label='Price Derivative')
-            #price_y_vals = price_intercept + price_slope * price_x
-            #plt.plot(price_x, price_y_vals, label='Price Tendency')
-            plt.legend(loc='upper left')
-            plt.title('10 Day Price-RSI Function')
-            plt.savefig(
-                "{}/{}.png".format(
-                    self.images_dir, self.datas[0].datetime.date(0)
-                )
-            )
-            plt.close('all')
-
         # Check if an order is pending ... if yes, we cannot send a 2nd one
         if self.order:
             return
 
-        # Check if we are in the market
-        if not self.position:
-            if self.rsi[0] < 30:
-                self.log("CREATE BUY ORDER, {}".format(self.dataclose[0]))
-                self.order = self.buy()
-        else:
-            if self.rsi[0] > 70:
-                self.log("CREATE SELL ORDER, {}".format(self.dataclose[0]))
-                self.order = self.sell()
-                self.total_trades += 1
+        if (
+            self.data_memory.current_size >= self.memory_size
+            #and self.rsi_memory.memory[0] > 70
+        ):
+            #plt.figure()
+            rsi_slope = self.get_line_slope(self.rsi_memory, 'RSI')
+            price_slope = self.get_line_slope(self.data_memory.closes, 'Price')
+            #plt.legend(loc='upper left')
+            #plt.title("{} Day Price-RSI Function".format(self.memory_size))
+            #plt.savefig(
+            #    "{}/{}.png".format(
+            #        self.images_dir, self.datas[0].datetime.date(0)
+            #    )
+            #)
+            #plt.close('all')
+
+            # Check if we are in the market
+            if not self.position:
+                if (
+                    self.rsi_memory.memory[0] < 30
+                    and rsi_slope > 0
+                    and price_slope < 0
+                ):
+                #if self.rsi[0] < 30:
+                    self.log("CREATE BUY ORDER, {}".format(self.dataclose[0]))
+                    self.order = self.buy()
+            else:
+                if (
+                    self.rsi_memory.memory[0] > 70
+                    and rsi_slope < 0
+                    and price_slope > 0
+                ):
+                #if self.rsi[0] > 70:
+                    self.log("CREATE SELL ORDER, {}".format(self.dataclose[0]))
+                    self.order = self.sell()
+                    self.total_trades += 1
 
     def get_line_slope(self, memory, indicator=''):
         x, y, yspline, yderivative = memory.get_interpolation()
         slope, intercept = memory.get_linear_trend(yspline)
         ytrend = intercept + slope * x
-        plt.plot(x, yspline, label="{} Spline".format(indicator))
-        plt.plot(x, yderivative, label="{} Derivative".format(indicator))
-        plt.plot(x, ytrend, label="{} Tendency".format(indicator))
+        #plt.plot(x, yspline, label="{} Spline".format(indicator))
+        #plt.plot(x, yderivative, label="{} Derivative".format(indicator))
+        #plt.plot(x, ytrend, label="{} Tendency".format(indicator))
         return slope
 
     def stop(self):
-        print("Total Gross Profit: {}, Losses: {}".format(
-            self.gross_profits, self.gross_losses
-        ))
-        print("Total Trades Closed: {}".format(self.total_trades))
-        print("Percent Profitable: {}".format(self.percent_profitable))
-        print("Profit Factor: {}".format(self.profit_factor))
+        #print("Total Gross Profit: {}, Losses: {}".format(
+        #    self.gross_profits, self.gross_losses
+        #))
+        #print("Total Trades Closed: {}".format(self.total_trades))
+        #print("Percent Profitable: {}".format(self.percent_profitable))
+        #print("Profit Factor: {}".format(self.profit_factor))
         super().stop()
 
 
 if __name__ == '__main__':
     cerebro = bt.Cerebro()
-    cerebro.addstrategy(RSIStrategy)
+    cerebro.optstrategy(RSIStrategy, memory_size=range(5,51))
+    #cerebro.addstrategy(RSIStrategy)
 
     modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
     datapath = os.path.join(modpath, 'YHF-BTC-USD.csv')
 
     data = bt.feeds.YahooFinanceCSVData(
         dataname=datapath,
-        fromdate=datetime.datetime(2015, 1, 1),
-        todate=datetime.datetime(2015, 12, 31),
+        fromdate=datetime.datetime(2010, 1, 1),
+        todate=datetime.datetime(2019, 12, 31),
         reverse=False)
 
     cerebro.adddata(data)
@@ -197,9 +207,37 @@ if __name__ == '__main__':
     cerebro.broker.setcommission(commission=0.0)
     starting_cash = cerebro.broker.getvalue()
     print("Starting Portfolio Value: {}".format(starting_cash))
-    cerebro.run()
+    results = cerebro.run(optreturn=False)
+    headers = ["PERIODS"]
+    profits = ["GROSS PROFITS"]
+    losses = ["GROSS LOSSES"]
+    trades = ["TOTAL TRADES CLOSED"]
+    percent_profitable = ["PERCENT PROFITABLE"]
+    profit_factor = ["PROFIT FACTOR"]
+    max_drawdown = ["MAX DRAWDOWN"]
+    max_profit = ["MAX PROFIT"]
+    for strat in results:
+        strat = strat[0]
+        headers.append("PERIOD {}".format(strat.params.memory_size))
+        profits.append(strat.gross_profits)
+        losses.append(strat.gross_losses)
+        trades.append(strat.total_trades)
+        percent_profitable.append(strat.percent_profitable)
+        profit_factor.append(strat.profit_factor)
+        max_drawdown.append(strat.max_drawdown)
+        max_profit.append(strat.max_profit)
+    with open('./results_rsi_divergence.csv', 'w') as csvfile:
+        writer = csv.writer(csvfile, delimiter=",")
+        writer.writerow(headers)
+        writer.writerow(profits)
+        writer.writerow(losses)
+        writer.writerow(trades)
+        writer.writerow(percent_profitable)
+        writer.writerow(profit_factor)
+        writer.writerow(max_drawdown)
+        writer.writerow(max_profit)
     final_cash = cerebro.broker.getvalue()
     net_profit = final_cash - starting_cash
     print("Final Portfolio Value: {}".format(final_cash))
     print("Net Profit: {}".format(net_profit))
-    cerebro.plot()
+    #cerebro.plot()
