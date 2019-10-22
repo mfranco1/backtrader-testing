@@ -18,7 +18,7 @@ matplotlib==3.0.2
 multidict==4.5.2
 numpy==1.16.0
 pandas==0.23.4
-Pillow==5.4.1
+Pillow==6.2.0
 pkg-resources==0.0.0
 plotting==0.1.0
 pycares==2.4.0
