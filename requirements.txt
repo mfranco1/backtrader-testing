@@ -6,7 +6,7 @@ attrs==18.2.0
 backtrader==1.9.69.122
 black==18.9b0
 ccxt==1.18.152
-certifi==2018.11.29
+certifi==2022.12.7
 chardet==3.0.4
 Click==7.0
 cycler==0.10.0
